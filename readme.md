@@ -10,9 +10,14 @@ The results are printed to stdout.
 
 Images from URLs are cache in the folder `.\inputCache` for subsequent runs.
 
+### RectDraw Demo
+
+The application can be run with `LOLViewportFinder.exe --rectDraw` to capture the window from the enclosed `RectDraw` application. 
+Run `RectDraw.exe` afterwards and draw a rectangle to see its live detection in `LOLViewportFinder`.
+
 ### Debug Output
 
-Add the `-d` argument have the application write intermediate images to the folder `.\output`.
+Add the `-d` argument to have the application write intermediate images to the folder `.\output`.
 
 
 ## Open Improvements

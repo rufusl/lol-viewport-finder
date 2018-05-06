@@ -52,6 +52,8 @@
   <ItemGroup>
     <Compile Include="Blob.cs" />
     <Compile Include="BlobDetector.cs" />
+    <Compile Include="CaptureDemo\CaptureRectDraw.cs" />
+    <Compile Include="CaptureDemo\Win32.cs" />
     <Compile Include="GeometryUtils.cs" />
     <Compile Include="ImagePreProcessing.cs" />
     <Compile Include="ImageUtils.cs" />
