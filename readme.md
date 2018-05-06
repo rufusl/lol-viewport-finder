@@ -6,6 +6,8 @@ This command line application finds the location of the white viewport rectangle
 
 Run `LOLViewportFinder.exe` to process all files from `inputFiles.txt`. `inputFiles.txt` requires an URL or local file path per line.
 
+You can also try `LOLViewportFinder_Dbg.cmd` and `LOLViewportFinder_RectDraw.cmd` that set the options described below.
+
 The results are printed to stdout.
 
 Images from URLs are cache in the folder `.\inputCache` for subsequent runs.
