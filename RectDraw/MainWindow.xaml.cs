@@ -40,6 +40,7 @@ namespace RectDraw
         {
             _isMouseDown = true;
             _drawStart = e.GetPosition(drawLayer);
+            Mouse.Capture(drawLayer);
             _rect.Width = 0;
             _rect.Height = 0;
             _rectTransform.ScaleX = 1;
@@ -64,6 +65,7 @@ namespace RectDraw
         private void OnMouseUp(object sender, MouseButtonEventArgs e)
         {
             _isMouseDown = false;
+            Mouse.Capture(null);
         }
     }
 }
