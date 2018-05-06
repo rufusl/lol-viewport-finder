@@ -259,3 +259,6 @@ paket-files/
 # Python Tools for Visual Studio (PTVS)
 __pycache__/
 *.pyc
+dist/inputCache/
+dist/output/1_0_crop.jpg
+dist/output/
