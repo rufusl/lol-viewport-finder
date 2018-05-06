@@ -78,7 +78,7 @@ namespace LOLViewportFinder
 
             var pending = new Queue<PixelLocation>();
 
-            AddNeighbouringPixels(pxLocation, pending, visited, 0, 0, width, height);
+            AddNeighbouringPixels(pxLocation, pending, visited, 0, 0, width - 1, height - 1);
 
             while (pending.Count > 0)
             {
@@ -87,7 +87,7 @@ namespace LOLViewportFinder
                 if (imageMap[p.X, p.Y] == _blobColorValue)
                 {
                     connectedPixels.Add(p);
-                    AddNeighbouringPixels(p, pending, visited, 0, 0, width, height);
+                    AddNeighbouringPixels(p, pending, visited, 0, 0, width - 1, height - 1);
                 }
             }
             return new Blob(connectedPixels);
