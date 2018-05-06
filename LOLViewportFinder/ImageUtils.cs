@@ -3,17 +3,61 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
+using System.Linq;
+using System.Net;
 using System.Runtime.InteropServices;
 
 namespace LOLViewportFinder
 {
     static class ImageUtils
     {
-        // TODO: Read bitmap from URL? Cache?
+        private static ImageCodecInfo _jpegCodec;
 
-        public static Bitmap ReadImage(string path)
+        public static Bitmap ReadImage(string localPathOrUrl, string cacheDir)
+        {
+            var isLocal = File.Exists(localPathOrUrl) || (new Uri(localPathOrUrl).IsFile);
+            if (isLocal)
+                return ReadLocalImage(localPathOrUrl);
+            else
+                return ReadRemoteImage(localPathOrUrl, cacheDir);
+        }
+
+        private static Bitmap ReadRemoteImage(string url, string cacheDir)
+        {
+            var uri = new Uri(url);
+            var localPath = Path.Combine(cacheDir, Path.GetFileName(uri.LocalPath));
+            if (!File.Exists(localPath))
+            {
+                if (!Directory.Exists(cacheDir))
+                    Directory.CreateDirectory(cacheDir);
+
+                using (WebClient client = new WebClient())
+                {
+                    client.DownloadFile(uri, localPath);
+                }
+            }
+            return ReadLocalImage(localPath);
+        }
+
+        private static Bitmap ReadLocalImage(string path)
         {
             return (Bitmap)Bitmap.FromFile(path);
+        }
+
+        public static void SaveImageAsJpg(Bitmap img, string filename)
+        {
+            var encoderParams = new EncoderParameters(1);
+            encoderParams.Param[0] = new EncoderParameter(Encoder.Quality, 90L);
+            img.Save(filename, GetJpegCodec(), encoderParams);
+        }
+
+        private static ImageCodecInfo GetJpegCodec()
+        {
+            if (_jpegCodec == null)
+            {
+                _jpegCodec = ImageCodecInfo.GetImageEncoders().FirstOrDefault(c => c.FormatID.Equals(ImageFormat.Jpeg.Guid));
+            }
+            return _jpegCodec;
         }
 
         public static byte[] ReadPixels(Bitmap img)
@@ -48,9 +92,9 @@ namespace LOLViewportFinder
             return imageData;
         }
 
-        public static Bitmap CreateBlobsHighlightImage(Bitmap originalImg, IEnumerable<Blob> blobs)
+        public static Bitmap CreateBlobsHighlightImage(int width, int height, IEnumerable<Blob> blobs)
         {
-            Bitmap target = new Bitmap(originalImg.Width, originalImg.Height, PixelFormat.Format8bppIndexed);
+            Bitmap target = new Bitmap(width, height, PixelFormat.Format8bppIndexed);
 
             var targetData = target.LockBits(new Rectangle(0, 0, target.Width, target.Height), ImageLockMode.ReadWrite, target.PixelFormat);
             var allBlobPixels = new byte[targetData.Height * targetData.Stride];

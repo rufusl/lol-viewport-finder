@@ -4,6 +4,11 @@ namespace LOLViewportFinder
 {
     class Blob
     {
-        public List<PixelLocation> Pixels = new List<PixelLocation>();
+        public IReadOnlyList<PixelLocation> Pixels { get; }
+
+        public Blob(IReadOnlyList<PixelLocation> pixels)
+        {
+            Pixels = pixels;
+        }
     }
 }

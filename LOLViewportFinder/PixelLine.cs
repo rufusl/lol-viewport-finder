@@ -1,11 +1,11 @@
 ﻿namespace LOLViewportFinder
 {
-    class Line
+    class PixelLine
     {
         public PixelLocation Start { get; }
         public PixelLocation End { get; }
 
-        public Line(int startX, int startY, int endX, int endY)
+        public PixelLine(int startX, int startY, int endX, int endY)
         {
             Start = new PixelLocation(startX, startY);
             End = new PixelLocation(endX, endY);

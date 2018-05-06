@@ -9,7 +9,7 @@ namespace LOLViewportFinder
 {
     class GeometryUtils
     {
-        public static Rectangle FindBoundingBox(IReadOnlyList<Line> lines)
+        public static Rectangle FindBoundingBox(IReadOnlyList<PixelLine> lines)
         {
             int minX = int.MaxValue, minY = int.MaxValue, maxX = int.MinValue, maxY = int.MinValue;
             foreach (var l in lines)
@@ -54,7 +54,7 @@ namespace LOLViewportFinder
             return new Rectangle(minX, minY, maxX - minX, maxY - minY);
         }
 
-        public static RectangleF MakeRelativeRect(Rectangle absoluteRect, int imgWidth, int imgHeight)
+        public static RectangleF NormalizeRect(Rectangle absoluteRect, int imgWidth, int imgHeight)
         {
             return new RectangleF(
                 (float)absoluteRect.X / imgWidth,

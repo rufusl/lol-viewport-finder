@@ -3,24 +3,32 @@ using System.Drawing;
 
 namespace LOLViewportFinder
 {
-
+    /// <summary>
+    /// Finds areas of connected pixels of the same color.
+    /// </summary>
     class BlobDetector
     {
         private readonly byte _blobColorValue;
         private readonly int _minBlobPixels;
 
+        /// <summary>
+        /// Creates a new <see cref="BlobDetector"/>.
+        /// </summary>
+        /// <param name="blobColorValue">The color value to group.</param>
+        /// <param name="minBlobPixels">The minimum number of pixels to form a valid blob.</param>
         public BlobDetector(byte blobColorValue, int minBlobPixels)
         {
             _blobColorValue = blobColorValue;
             _minBlobPixels = minBlobPixels;
         }
 
-        public IReadOnlyList<Blob> FindBlobs(Bitmap img)
+        public IEnumerable<Blob> FindBlobs(Bitmap img)
         {
             var width = img.Width;
             var height = img.Height;
             var imgData = ImageUtils.ReadPixels(img, out int bytesPerPixel, out int stride);
 
+            // Copy image to two-dimensional array for easier and more efficient navigation through the image.
             var imageMap = new byte[img.Width, img.Height];
             for (int i = 0; i < imgData.Length; i++)
             {
@@ -29,8 +37,9 @@ namespace LOLViewportFinder
                 imageMap[x, y] = imgData[i];
             }
 
+            // the set of pixels that we already processed
             var visited = new HashSet<PixelLocation>(PixelLocation.EqualityComparer);
-            var blobs = new List<Blob>();
+            // Iterate column-wise.
             for (int x = 0; x < width; x++)
             {
                 for (int y = 0; y < height; y++)
@@ -44,22 +53,28 @@ namespace LOLViewportFinder
                     var pixelValue = imageMap[x, y];
                     if (pixelValue == _blobColorValue)
                     {
+                        // Once we find a matching pixel, we start blob detection.
                         var blob = CollectContiguousBlob(imageMap, c, visited);
                         if (blob.Pixels.Count > _minBlobPixels)
-                            blobs.Add(blob);
+                            yield return blob;
                     }
                 }
             }
-
-            return blobs;
         }
 
+        /// <summary>
+        /// Starts at a position and finds all adjacent pixels of the same color. Search if performed in all directions (also diagonal).
+        /// </summary>
+        /// <param name="imageMap">The input image to collect blobs from.</param>
+        /// <param name="pxLocation">The initial pixel to start collecting blob pixels from.</param>
+        /// <param name="visited">The set of pixels that we already checked.</param>
+        /// <returns>A <see cref="Blob"/> of connected pixels of the same color.</returns>
         private Blob CollectContiguousBlob(byte[,] imageMap, PixelLocation pxLocation, HashSet<PixelLocation> visited)
         {
             var width = imageMap.GetLength(0);
             var height = imageMap.GetLength(1);
-            var blob = new Blob();
-            blob.Pixels.Add(pxLocation);
+            var connectedPixels = new List<PixelLocation>();
+            connectedPixels.Add(pxLocation);
 
             var pending = new Queue<PixelLocation>();
 
@@ -71,11 +86,11 @@ namespace LOLViewportFinder
 
                 if (imageMap[p.X, p.Y] == _blobColorValue)
                 {
-                    blob.Pixels.Add(p);
+                    connectedPixels.Add(p);
                     AddNeighbouringPixels(p, pending, visited, 0, 0, width, height);
                 }
             }
-            return blob;
+            return new Blob(connectedPixels);
         }
 
         private void AddNeighbouringPixels(

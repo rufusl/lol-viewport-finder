@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -10,93 +11,56 @@ namespace LOLViewportFinder
 {
     class Program
     {
-        static string[] inputFiles = new[]
-        {
-            "1.jpg", "2.jpg", "3.jpg", "4.jpg", "5.jpg", "6.jpg", "7.jpg", "8.jpg", "9.jpg", "10.jpg", "hires_1.jpg",
-        };
+        const string CacheDir = "inputCache";
+        const string OutDir = "output";
+        static bool _enableDebugOutput = false;
 
         static void Main(string[] args)
         {
-            // TODO: Add console logs.
-            foreach (var imgFile in inputFiles)
+            _enableDebugOutput = args.Length > 0 && args[0] == "-d";
+
+            var inputFiles = File.ReadAllLines("inputFiles.txt")
+                .Where(inputFile => !string.IsNullOrWhiteSpace(inputFile))
+                .Select(inputFile => inputFile.Trim())
+                .Where(inputFile => inputFile[0] != '#');
+
+            var minimapArea = new RectangleF(1640f / 1920f, 800f / 1080f, 280f / 1920f, 280f / 1080f);
+            var whiteRectDetector = new WhiteRectangleDetector(minimapArea, _enableDebugOutput);
+
+            foreach (var imgFilePathOrUrl in inputFiles)
             {
-                ProcessImage(imgFile);
-            }
-        }
-
-        private static void ProcessImage(string imgFile)
-        {
-            // TODO: Optimize by copying less images around?
-            // TODO: Shrink images for better performance?
-            // TODO: Add better debug output.
-
-            var img = LoadFile(imgFile);
-            var croppedImage = Crop(img);
-            var whiteImage = WhiteFilter(croppedImage);
-            var blobDetector = new BlobDetector(byte.MaxValue, 20);
-            var blobs = blobDetector.FindBlobs(whiteImage);
-
-            var lineDetector = new LineDetector(5);
-            var rectDetector = new RectangularShapeDetector(10, 4);
-            Rectangle? rectBlobAreaAbs = null;
-            RectangleF? rectBlobArea = null;
-            var rectBlob = blobs.FirstOrDefault(b =>
-            {
-                var lines = lineDetector.DetectLines(b);
-                if (rectDetector.FormsRectangularShape(lines))
+                Console.WriteLine($"Processing file {imgFilePathOrUrl}");
+                var img = ImageUtils.ReadImage(imgFilePathOrUrl, "inputCache");
+                var result = whiteRectDetector.FindWhiteRectangle(img);
+                if (result != null)
                 {
-                    var rectInMiniMapAbs = GeometryUtils.FindBoundingBox(lines);
-                    rectBlobAreaAbs = MiniMapToAbsoluteCoordinates(img, rectInMiniMapAbs);
-                    rectBlobArea = GeometryUtils.MakeRelativeRect(rectInMiniMapAbs, whiteImage.Width, whiteImage.Height);
-                    return true;
+                    Console.WriteLine($"Detected MiniMap Viewport at {result.AbsolutePosition.ToString()}");
+                    Console.WriteLine($"relative position in MiniMap: {result.NormalizedToDetectionAreaPosition.ToString()}");
                 }
                 else
                 {
-                    return false;
+                    Console.Error.WriteLine("No MiniMap Viewport found.");
                 }
-            });
 
-            Console.WriteLine($"File {imgFile}:");
-            if (rectBlob != null)
-            {
-                Console.WriteLine($"Detected MiniMap Viewport at {rectBlobAreaAbs.ToString()}, relative position: {rectBlobArea.ToString()}");
-            }
-            else
-            {
-                Console.Error.WriteLine("No MiniMap Viewport found.");
+                if (_enableDebugOutput)
+                {
+                    SaveDebugInfo(imgFilePathOrUrl, whiteRectDetector.LastDebugInfo);
+                }
+
+                Console.WriteLine();
             }
         }
 
-        private static Bitmap LoadFile(string imgFile)
+        static void SaveDebugInfo(string imgFilePathOrUrl, WhiteRectangleDetector.DebugInformation debugInfo)
         {
-            return ImageUtils.ReadImage(@"C:\Users\rufus\Downloads\images\" + imgFile);
-        }
+            if (!Directory.Exists(OutDir))
+                Directory.CreateDirectory(OutDir);
 
-        private static Bitmap Crop(Bitmap image)
-        {
-            // The mini map's relative location and size is always the same on all screen sizes.
-            // These values are taken from the full hd resolution.
-            var filter = new ImageCrop(1640f / 1920f, 800f / 1080f, 280f / 1920f, 280f / 1080f);
-            return filter.ProcessImage(image);
-        }
-
-        private static Rectangle MiniMapToAbsoluteCoordinates(Bitmap img, Rectangle rect)
-        {
-            int miniMapX = (int)((1640f / 1920f) * img.Width);
-            int miniMapY = (int)((800f / 1080f) * img.Height);
-
-            return new Rectangle(
-                miniMapX + rect.X,
-                miniMapY + rect.Y,
-                rect.Width,
-                rect.Height
-            );
-        }
-
-        private static Bitmap WhiteFilter(Bitmap image)
-        {
-            var filter = new WhiteFilter(220);
-            return filter.ProcessImage(image);
+            var path = File.Exists(imgFilePathOrUrl) ? imgFilePathOrUrl : new Uri(imgFilePathOrUrl).LocalPath;
+            var filebase = Path.GetFileNameWithoutExtension(path);
+            ImageUtils.SaveImageAsJpg(debugInfo.CropImage, Path.Combine(OutDir, $"{filebase}_0_crop.jpg"));
+            ImageUtils.SaveImageAsJpg(debugInfo.BWImage, Path.Combine(OutDir, $"{filebase}_1_bw.jpg"));
+            ImageUtils.SaveImageAsJpg(debugInfo.BlobsDetectionResult, Path.Combine(OutDir, $"{filebase}_2_blobs.jpg"));
         }
     }
 }

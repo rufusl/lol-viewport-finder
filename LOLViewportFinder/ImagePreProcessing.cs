@@ -2,6 +2,8 @@
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
+using System.Linq;
+using System.IO;
 
 namespace LOLViewportFinder
 {
@@ -10,38 +12,48 @@ namespace LOLViewportFinder
         Bitmap ProcessImage(Bitmap img);
     }
 
+    /// <summary>
+    /// Crops an image to a normalized rectangle. Top left is (0,0), bottom right is (1,1). Full width/height is 1/1.
+    /// </summary>
     class ImageCrop : IImageProcessor
     {
-        private readonly float _relX;
-        private readonly float _relY;
-        private readonly float _relWidth;
-        private readonly float _relHeight;
+        private readonly float _normX;
+        private readonly float _normY;
+        private readonly float _normWidth;
+        private readonly float _normHeight;
 
-        public ImageCrop(float relX, float relY, float relWidth, float relHeight)
+        public ImageCrop(float normX, float normY, float normWidth, float normHeight)
         {
-            _relX = relX;
-            _relY = relY;
-            _relWidth = relWidth;
-            _relHeight = relHeight;
+            _normX = normX;
+            _normY = normY;
+            _normWidth = normWidth;
+            _normHeight = normHeight;
         }
 
         public Bitmap ProcessImage(Bitmap img)
         {
             var cropArea = new Rectangle(
-                (int)(img.Width * _relX), 
-                (int)(img.Height * _relY), 
-                (int)(img.Width * _relWidth),
-                (int)(img.Height * _relHeight)    
+                (int)(img.Width * _normX), 
+                (int)(img.Height * _normY), 
+                (int)(img.Width * _normWidth),
+                (int)(img.Height * _normHeight)    
             );
             return img.Clone(cropArea, img.PixelFormat);
         }
     }
 
-    class WhiteFilter : IImageProcessor
+    /// <summary>
+    /// Filters out all pixels below a certain grey threshold. The result is a pure black/white only image.
+    /// </summary>
+    class BlackWhiteConverter : IImageProcessor
     {
         private byte _whiteThreshold;
 
-        public WhiteFilter(byte whiteThreshold)
+        /// <summary>
+        /// Creates a new <see cref="BlackWhiteConverter"/>.
+        /// </summary>
+        /// <param name="whiteThreshold">The minimum grey value to accept a pixel as "white". All pixels below that value are output as black.</param>
+        public BlackWhiteConverter(byte whiteThreshold)
         {
             _whiteThreshold = whiteThreshold;
         }
@@ -65,7 +77,7 @@ namespace LOLViewportFinder
                     avg += pixelBuffer[j];
                 }
                 avg /= bytesPerPixel;
-                // We filter out pixel below a certain threshold.
+                // We filter out pixels below a certain threshold.
                 var isWhite = avg > _whiteThreshold;
 
                 // Determine position in image.
@@ -78,6 +90,25 @@ namespace LOLViewportFinder
             }
             target.UnlockBits(targetData);
             return target;
+        }
+    }
+
+    /// <summary>
+    /// Just calls the specified action with the current image and returns it.
+    /// </summary>
+    class Tap : IImageProcessor
+    {
+        private Action<Bitmap> _callback;
+
+        public Tap(Action<Bitmap> callback)
+        {
+            _callback = callback;
+        }
+
+        public Bitmap ProcessImage(Bitmap img)
+        {
+            _callback(img);
+            return img;
         }
     }
 }

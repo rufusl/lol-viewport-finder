@@ -4,6 +4,9 @@ using System.Linq;
 
 namespace LOLViewportFinder
 {
+    /// <summary>
+    /// Finds axis-aligned lines of pixels in a <see cref="Blob"/>.
+    /// </summary>
     class LineDetector
     {
         private class AxisAlignedLine
@@ -21,13 +24,15 @@ namespace LOLViewportFinder
             _minLineLengthPx = minLineLengthPx;
         }
 
-        public IReadOnlyList<Line> DetectLines(Blob blob)
+        public IReadOnlyList<PixelLine> DetectLines(Blob blob)
         {
+            // A line must consist of at least 2 pixels.
             if (blob.Pixels.Count < 1)
             {
-                return new List<Line>();
+                return new List<PixelLine>();
             }
 
+            // The horizontal lines that might be extended when discovering new adjacent pixels.
             var openHorizontalLines = new List<AxisAlignedLine>
             {
                 new AxisAlignedLine()
@@ -49,6 +54,8 @@ namespace LOLViewportFinder
                 }
             };
 
+            // Check if pixels of the blob are horizontally or vertically next to another pixel,
+            // if so, they form or extend a line.
             for (int i = 1; i < blob.Pixels.Count; i++)
             {
                 var px = blob.Pixels[i];
@@ -91,6 +98,8 @@ namespace LOLViewportFinder
                     }
                 }
 
+                // If the current pixel is not next to an existing line, then we assume
+                // this pixel starts a new line in any direction.
                 if (newLine)
                 {
                     openHorizontalLines.Add(new AxisAlignedLine()
@@ -110,12 +119,13 @@ namespace LOLViewportFinder
                 }
             }
 
+            // Filter lines by min length and map to output structure.
             var foundLines = openHorizontalLines.
                 Where(l => Math.Abs(l.Start - l.End) > _minLineLengthPx).
-                Select(l => new Line(l.Start, l.OtherAxisValue, l.End, l.OtherAxisValue)).
+                Select(l => new PixelLine(l.Start, l.OtherAxisValue, l.End, l.OtherAxisValue)).
                 Concat(openVerticalLines.
                     Where(l => Math.Abs(l.Start - l.End) > _minLineLengthPx).
-                    Select(l => new Line(l.OtherAxisValue, l.Start, l.OtherAxisValue, l.End))
+                    Select(l => new PixelLine(l.OtherAxisValue, l.Start, l.OtherAxisValue, l.End))
                 ).ToList();
 
             return foundLines;

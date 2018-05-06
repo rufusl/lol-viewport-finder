@@ -1,0 +1,12 @@
+# One URL or local file path per line
+https://sensor-updates-staging.s3.amazonaws.com/challenge/1.jpg
+https://sensor-updates-staging.s3.amazonaws.com/challenge/10.jpg
+https://sensor-updates-staging.s3.amazonaws.com/challenge/2.jpg
+https://sensor-updates-staging.s3.amazonaws.com/challenge/3.jpg
+https://sensor-updates-staging.s3.amazonaws.com/challenge/4.jpg
+https://sensor-updates-staging.s3.amazonaws.com/challenge/5.jpg
+https://sensor-updates-staging.s3.amazonaws.com/challenge/6.jpg
+https://sensor-updates-staging.s3.amazonaws.com/challenge/7.jpg
+https://sensor-updates-staging.s3.amazonaws.com/challenge/8.jpg
+https://sensor-updates-staging.s3.amazonaws.com/challenge/9.jpg
+https://sensor-updates-staging.s3.amazonaws.com/challenge/hires_1.jpg

@@ -5,21 +5,32 @@ using System.Numerics;
 
 namespace LOLViewportFinder
 {
+    /// <summary>
+    /// Tries to find a rectangular shape in a list of lines. The shape must not be closed, i.e. two lines are enough.
+    /// The rectangular shape is then defined by two lines that begin/end at the same point and that are orthogonal to each other.
+    /// </summary>
     class RectangularShapeDetector
     {
         private int _minSideLengthSq;
-        private int _edgeConnectionThreshold;
+        private int _edgeConnectionTolerancePx;
 
-        public RectangularShapeDetector(int minSideLength, int edgeConnectionThreshold)
+        /// <summary>
+        /// Creates a new <see cref="RectangularShapeDetector"/>.
+        /// </summary>
+        /// <param name="minSideLength">The minimum length of a line to be considered a side of the rectangle.</param>
+        /// <param name="edgeConnectionTolerancePx">The max allowed distance two line edge points may be offset by to consider them as connected.</param>
+        public RectangularShapeDetector(int minSideLength, int edgeConnectionTolerancePx)
         {
             _minSideLengthSq = minSideLength * minSideLength;
-            _edgeConnectionThreshold = edgeConnectionThreshold;
+            _edgeConnectionTolerancePx = edgeConnectionTolerancePx;
         }
 
-        public bool FormsRectangularShape(IReadOnlyList<Line> lines)
+        public bool FormsRectangularShape(IReadOnlyList<PixelLine> lines)
         {
+            // We need the line vectors later so we can precalculate them in (PixelLine, Vector) tuples.
             var linesWithVectors = lines.
                 Select(l => (Line: l, V: new Vector2(l.End.X - l.Start.X, l.End.Y - l.Start.Y))).
+                // Filter out lines below the minimum required length.
                 Where(lineWithVector => lineWithVector.V.LengthSquared() >= _minSideLengthSq).
                 ToArray();
 
@@ -51,7 +62,7 @@ namespace LOLViewportFinder
             return false;
         }
 
-        private bool AreConnected(Line line1, Line line2)
+        private bool AreConnected(PixelLine line1, PixelLine line2)
         {
             return AreConnected(line1.Start, line2.Start) ||
                 AreConnected(line1.Start, line2.End) ||
@@ -66,7 +77,7 @@ namespace LOLViewportFinder
 
         private bool AreClose(int i1, int i2)
         {
-            return Math.Abs(i1 - i2) < _edgeConnectionThreshold;
+            return Math.Abs(i1 - i2) < _edgeConnectionTolerancePx;
         }
     }
 }
