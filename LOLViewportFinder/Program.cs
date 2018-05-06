@@ -44,15 +44,16 @@ namespace LOLViewportFinder
 
                 if (_enableDebugOutput)
                 {
-                    SaveDebugInfo(imgFilePathOrUrl, whiteRectDetector.LastDebugInfo);
+                    PresentDebugInfo(imgFilePathOrUrl, whiteRectDetector.LastDebugInfo);
                 }
 
                 Console.WriteLine();
             }
         }
 
-        static void SaveDebugInfo(string imgFilePathOrUrl, WhiteRectangleDetector.DebugInformation debugInfo)
+        static void PresentDebugInfo(string imgFilePathOrUrl, WhiteRectangleDetector.IDebugInformation debugInfo)
         {
+            // Save images.
             if (!Directory.Exists(OutDir))
                 Directory.CreateDirectory(OutDir);
 
@@ -61,6 +62,14 @@ namespace LOLViewportFinder
             ImageUtils.SaveImageAsJpg(debugInfo.CropImage, Path.Combine(OutDir, $"{filebase}_0_crop.jpg"));
             ImageUtils.SaveImageAsJpg(debugInfo.BWImage, Path.Combine(OutDir, $"{filebase}_1_bw.jpg"));
             ImageUtils.SaveImageAsJpg(debugInfo.BlobsDetectionResult, Path.Combine(OutDir, $"{filebase}_2_blobs.jpg"));
+
+            // Print timing stats.
+            Console.WriteLine("Timing stats:");
+            foreach(var kv in debugInfo.Timings)
+            {
+                Console.WriteLine($"{kv.Key}: {kv.Value}ms");
+            }
+            Console.WriteLine($"Total: {debugInfo.Timings.Values.Sum()}ms");
         }
     }
 }

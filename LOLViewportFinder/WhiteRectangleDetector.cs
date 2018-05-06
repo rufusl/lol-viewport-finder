@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
 using System.Text;
@@ -31,11 +32,35 @@ namespace LOLViewportFinder
             }
         }
 
-        public class DebugInformation
+        public interface IDebugInformation
+        {
+            Bitmap CropImage { get; }
+            Bitmap BWImage { get; }
+            Bitmap BlobsDetectionResult { get; }
+            IDictionary<string, double> Timings { get; }
+        }
+
+        private class DebugInformation : IDebugInformation
         {
             public Bitmap CropImage { get; set; }
             public Bitmap BWImage { get; set; }
             public Bitmap BlobsDetectionResult { get; set; }
+            public IDictionary<string, double> Timings { get { return _timings;  } }
+
+            private readonly Stopwatch _stopwatch = new Stopwatch();
+            private readonly Dictionary<string, double> _timings = new Dictionary<string, double>();
+
+            public void StartTiming()
+            {
+                _stopwatch.Restart();
+            }
+
+            public void StopTiming(string tag)
+            {
+                _stopwatch.Stop();
+                var elapsed = _stopwatch.Elapsed;
+                _timings.Add(tag, elapsed.TotalMilliseconds);
+            }
         }
 
         private bool _lastDebugInfoEnabled;
@@ -44,7 +69,7 @@ namespace LOLViewportFinder
         /// Gets debug information for the last <see cref="FindWhiteRectangle(Bitmap, string)"/> call. 
         /// This is null unless the enableDebugInfo flag was set and a call to <see cref="FindWhiteRectangle(Bitmap, string)"/> was made.
         /// </summary>
-        internal DebugInformation LastDebugInfo { get => _lastDebugInfo; }
+        internal IDebugInformation LastDebugInfo { get => _lastDebugInfo; }
 
         private RectangleF _normalizedDetectionArea;
         private List<IImageProcessor> _preprocessorPipeline;
@@ -52,7 +77,6 @@ namespace LOLViewportFinder
         private BlobDetector _blobDetector;
         private LineDetector _lineDetector;
         private RectangularShapeDetector _rectDetector;
-
 
         /// <summary>
         /// Creates a new <see cref="WhiteRectangleDetector"/>.
@@ -66,13 +90,33 @@ namespace LOLViewportFinder
 
             // First crop the image to the detection area (minimap),
             _preprocessorPipeline = new List<IImageProcessor>();
+            if (enableDebugInfo)
+            {
+                _preprocessorPipeline.Add(new Tap((i) =>
+                {
+                    _lastDebugInfo.StartTiming();
+                }));
+            }
             _preprocessorPipeline.Add(new ImageCrop(normalizedDetectionArea.X, normalizedDetectionArea.Y, normalizedDetectionArea.Width, normalizedDetectionArea.Height));
             if (enableDebugInfo)
-                _preprocessorPipeline.Add(new Tap(img => _lastDebugInfo.CropImage = img));
+            {
+                _preprocessorPipeline.Add(new Tap(img =>
+                {
+                    _lastDebugInfo.StopTiming("PreProcess: Crop");
+                    _lastDebugInfo.CropImage = img;
+                    _lastDebugInfo.StartTiming();
+                }));
+            }
             // then filter out all pixels below a certain threshold to get only "white" pixels.
             _preprocessorPipeline.Add(new BlackWhiteConverter(220));
             if (enableDebugInfo)
-                _preprocessorPipeline.Add(new Tap(img => _lastDebugInfo.BWImage = img));
+            {
+                _preprocessorPipeline.Add(new Tap(img =>
+                {
+                    _lastDebugInfo.StopTiming("PreProcess: BW");
+                    _lastDebugInfo.BWImage = img;
+                }));
+            }
 
             _blobDetector = new BlobDetector(byte.MaxValue, 20);
             _lineDetector = new LineDetector(5);
@@ -87,6 +131,12 @@ namespace LOLViewportFinder
             }
 
             var preprocessed = PreProcessImage(inputImage);
+
+            if (_lastDebugInfoEnabled)
+            {
+                _lastDebugInfo.StartTiming();
+            }
+
             var blobs = _blobDetector.FindBlobs(preprocessed);
 
             if (_lastDebugInfoEnabled)
@@ -96,11 +146,13 @@ namespace LOLViewportFinder
                     _lastDebugInfo.BWImage.Height,
                     blobs
                 );
+                _lastDebugInfo.StartTiming();
             }
 
             foreach (var b in blobs)
             {
                 var lines = _lineDetector.DetectLines(b);
+
                 if (_rectDetector.FormsRectangularShape(lines))
                 {
                     // The detected rectangle in pixels, relative to the detection area (minimap).
@@ -114,10 +166,14 @@ namespace LOLViewportFinder
                         (int)(_normalizedDetectionArea.Height * inputImage.Height)
                     );
 
+                    if (_lastDebugInfoEnabled)
+                        _lastDebugInfo.StopTiming("RectangleDetection");
                     return new RectangleDetectionResult(rectInImageAbsolute, rectInDetectionAreaNormalized);
                 }
             }
 
+            if (_lastDebugInfoEnabled)
+                _lastDebugInfo.StopTiming("RectangleDetection");
             // No matching blob.
             return null;
         }
